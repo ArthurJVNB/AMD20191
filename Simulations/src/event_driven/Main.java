@@ -3,8 +3,9 @@ import java.util.ArrayList;
 
 public class Main {
 
-	static final int TEMPO_SIMULACAO = 1000;
-	static int tempoAtual = 0;
+	static final int TEMPO_SIMULACAO = 60000; // milissegundos
+	static int tempoAtual = 0; // milissegundos
+	static final int TEMPO_INTERVALO = 500; // milissegundos
 	static Processador processador;
 	static ArrayList<Processo> processosEmFila;
 	static Log log;
@@ -25,50 +26,84 @@ public class Main {
 	}
 	
 	public static void iniciarSimulacao() {
-		while (true) {
-			tempoAtual++;
+		Thread thread = new Thread(new Runnable() {
 			
-			// Gerar aleatoriamente alguns processos
-			if((int) (Math.random()*10) % 2 == 0) {
-				int qtdProcessos = (int) (Math.random() * 10 - 5);
-				qtdProcessos = qtdProcessos < 0 ? 0 : qtdProcessos;
-				
-				for (int i = 0; i < qtdProcessos; i++) {
-					processosEmFila.add(new Processo((int) (Math.random() * 10000)));
+			@Override
+			public void run() {
+				try {
+					while (true) {
+						System.out.println("Tempo atual: " + tempoAtual + "ms");
+						
+						// Gerar aleatoriamente alguns processos
+						if((tempoAtual % 1000 == 0) && (int) (Math.random()*10) % 2 == 0) {
+							int qtdProcessos = (int) (Math.random() * 10 - 5);
+							qtdProcessos = qtdProcessos < 0 ? 0 : qtdProcessos;
+							
+							for (int i = 0; i < qtdProcessos; i++) {
+								processosEmFila.add(new Processo((int) (Math.random() * 10000)));
+							}
+
+							if (qtdProcessos > 0) {
+								System.out.println("+ " + qtdProcessos + " processo(s)");
+								System.out.println("Processos em fila: " + processosEmFila.size());
+							}
+						}
+						
+						// Processar alguns dos processos
+						if (processador.podeProcessar(tempoAtual)) {
+							Processo processoAtual = processador.getProcessoAtual();
+							
+							if (processoAtual != null) {
+								// Processo concluído
+								log.addProcessoFeito(processoAtual);
+								
+								processosEmFila.remove(processoAtual);
+								processador.terminarProcessoAtual();
+
+								System.out.println("Processo de " + processoAtual.getTempoExecutado() + "ms concluído");
+								System.out.println("- 1 processo");
+								System.out.println("Processos em fila: " + processosEmFila.size());
+							}
+							
+							if (processosEmFila.size() > 0) {
+								// Processando novo processo
+								
+								Processo processoNovo = processosEmFila.get(0);
+								processador.processar(processoNovo, tempoAtual);
+								processosEmFila.remove(processoNovo);
+								
+								System.out.println("Processo de " + processoNovo.getTempoExecutado() + "ms executando");
+							}
+						}
+						
+						// Condição para finalizar simulação e gerar relatório
+						if (tempoAtual > TEMPO_SIMULACAO) {
+							int totalProcessos = processosEmFila.size() + log.getQtdProcessosFeitos();
+							float porcentagemProcessosConcluidos = ((float) log.getQtdProcessosFeitos()/totalProcessos) * 100;
+							float porcentagemTempoProcessado = (log.getTempoProcessado()/(float) TEMPO_SIMULACAO) * 100;
+							
+							System.out.println("============ RESUMO ============");
+							System.out.println("Processos feitos: " + log.getQtdProcessosFeitos());
+							System.out.println("Processos em fila: " + processosEmFila.size());
+							System.out.println("Processos gerados: " + totalProcessos);
+							System.out.println("Tempo processando: " + log.getTempoProcessado() + "ms");
+							System.out.println("Tempo total: " + TEMPO_SIMULACAO + "ms");
+							System.out.println("Porcentagem de processos concluídos: " + porcentagemProcessosConcluidos + "%");
+							System.out.println("Porcentagem de tempo processando: " + porcentagemTempoProcessado + "%");
+							System.out.println("================================");
+							
+							return;
+						}
+						
+						tempoAtual+=TEMPO_INTERVALO;
+						Thread.sleep(TEMPO_INTERVALO);
+					}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
-			
-			// Processar alguns dos processos
-			if (processador.podeProcessar(tempoAtual)) {
-				Processo processoAtual = processador.getProcessoAtual();
-				
-				if (processoAtual != null) {
-					log.addProcessoFeito(processoAtual);
-					
-					processosEmFila.remove(processoAtual);
-					processador.terminarProcessoAtual();
-				}
-				
-				if (processosEmFila.size() > 0) {
-					Processo processoNovo = processosEmFila.get(0);
-					processador.processar(processoNovo, tempoAtual);
-					processosEmFila.remove(processoNovo);
-				}
-			}
-			
-			// Condição para finalizar simulação e gerar relatório
-			if (tempoAtual > TEMPO_SIMULACAO) {
-				int totalProcessos = processosEmFila.size() + log.getQtdProcessosFeitos();
-				
-				System.out.println("Processos em fila: " + processosEmFila.size());
-				System.out.println("Processos feitos: " + log.getQtdProcessosFeitos());
-				System.out.println("Processos gerados: " + totalProcessos);
-				System.out.println("Tempo processando: " + log.getTempoProcessado());
-				System.out.println("Tempo total: " + TEMPO_SIMULACAO);
-				System.out.println("Porcentagem de processos concluídos: " + (((float) processosEmFila.size()/totalProcessos) * 100) + "%");
-				
-				return;
-			}
-		}
+		});
+		thread.start();
 	}
 }

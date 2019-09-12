@@ -29,7 +29,7 @@ public class Processador {
 	
 	public void processar(Processo p, int tempoAtual) {
 		processoAtual = p;
-		int tempoDeProcessamento = (int) (Math.random() * 10);
+		int tempoDeProcessamento = (int) (Math.random() * 10000);
 		p.setTempoExecutado(tempoDeProcessamento);
 		tempoParaProximoProcessamento = tempoAtual + tempoDeProcessamento;
 	}
